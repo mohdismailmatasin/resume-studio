@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume Builder — Professional</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  :root{ --bg:#e9ebee; --panel:#fff; --ink:#111; --muted:#555; --radius:12px; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
+  header.toolbar{position:sticky;top:0;z-index:50;background:#0f172a;color:#fff;padding:10px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  header.toolbar h1{font-size:16px;margin:0 8px 0 0}
+  header.toolbar .sub{font-size:12px;opacity:.75}
+  .btn{border:0;border-radius:8px;padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#0f172a}
+  .btn.primary{background:#2563eb;color:#fff}
+  .btn.success{background:#059669;color:#fff}
+  .btn.ghost{background:transparent;color:#fff;border:1px solid #334155}
+  .btn.small{padding:5px 9px;font-size:12px}
+  .app{display:grid;grid-template-columns:450px 1fr;min-height:calc(100vh - 52px)}
+  aside.editor{background:#f8fafc;border-right:1px solid #e2e8f0;padding:16px;overflow:auto;max-height:calc(100vh - 52px)}
+  .card{background:var(--panel);border:1px solid #e2e8f0;border-radius:var(--radius);padding:12px;margin-bottom:12px}
+  .card h2{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:#0f172a;display:flex;justify-content:space-between;align-items:center}
+  label{font-size:11px;font-weight:700;color:#334155;text-transform:uppercase;letter-spacing:.4px;margin:8px 0 4px;display:block}
+  input[type=text],textarea,select{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:8px 9px;font-size:13px;font-family:inherit;background:#fff}
+  textarea{min-height:70px;resize:vertical;line-height:1.5}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .item{border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin:8px 0;background:#fff}
+  .item-head{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-bottom:6px}
+  .mini{border:1px solid #cbd5e1;background:#f1f5f9;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer}
+  .bullet-row{display:flex;gap:6px;margin:6px 0}.bullet-row input{flex:1}
+  .hint{font-size:12px;color:var(--muted);line-height:1.5}
+  .photo-row{display:flex;gap:10px;align-items:center}
+  #editorPhotoPrev{width:64px;height:64px;object-fit:cover;border-radius:50%;border:1px solid #cbd5e1;background:#eee}
+  .swatches{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .sw{width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent}
+  .sw.active{border-color:#0f172a}
+  .check-grid{display:flex;flex-wrap:wrap;gap:8px;font-size:12px}
+  .check-grid label{text-transform:none;font-weight:500;font-size:12px;margin:0;display:flex;gap:4px;align-items:center}
+  main.preview-wrap{padding:24px;overflow:auto;max-height:calc(100vh - 52px);display:flex;flex-direction:column;align-items:center}
+  .paper-toolbar{width:816px;max-width:100%;display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;color:#334155;font-size:12px;gap:8px;flex-wrap:wrap}
+  #toast{background:#0f172a;color:#fff;padding:8px 14px;border-radius:8px;font-size:13px;display:none}
+  input[type=range]{width:100%;accent-color:#2563eb}
+  .photo-ctrls{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+  .slider-row{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:12px;color:#334155}
+  .slider-row input{flex:1}
+  .slider-row output{font-weight:700;min-width:44px;text-align:right}
+
+  /* ---------- Photo crop modal ---------- */
+  .crop-overlay{position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+  .crop-overlay.open{display:flex}
+  .crop-modal{background:#fff;border-radius:14px;max-width:560px;width:100%;padding:18px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+  .crop-modal h3{margin:0 0 4px;font-size:15px}
+  .crop-modal p{margin:0 0 10px;font-size:12px;color:#555}
+  .crop-stage{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+  .crop-box{width:280px;height:280px;background:#0f172a repeating-linear-gradient(45deg,#1e293b 0 12px,#0f172a 12px 24px);overflow:hidden;position:relative;touch-action:none;cursor:grab;flex-shrink:0;border-radius:12px}
+  .crop-box:active{cursor:grabbing}
+  .crop-box.circle{border-radius:50%;width:260px;height:260px}
+  .crop-box img{width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none}
+  .crop-side{flex:1;min-width:200px;font-size:12px}
+
+  /* ============ PROFESSIONAL RESUME PAPER ============ */
+  #resumePaper{
+    --ra:#14365d;
+    --ra-dark:#0b1e38;
+    --gold:#c9a227;
+    width:816px;max-width:100%;background:#fff;color:#1a1a1a;
+    box-shadow:0 10px 30px rgba(0,0,0,.15);
+    font-size:12.8px;line-height:1.6;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  #resumePaper.density-compact{font-size:12px;line-height:1.5}
+  #resumePaper.density-compact .pbody{padding:4px 40px 28px}
+  #resumePaper.density-compact .sec-t{margin:16px 0 4px}
+  #resumePaper.font-segoe{font-family:"Segoe UI",Arial,sans-serif}
+  #resumePaper.font-georgia{font-family:Georgia,"Times New Roman",serif}
+  #resumePaper.font-garamond{font-family:Garamond,Georgia,serif}
+  #resumePaper.font-calibri{font-family:Calibri,Arial,sans-serif}
+  .ph{background:linear-gradient(120deg,var(--ra) 0%,var(--ra-dark) 100%);color:#fff;padding:32px 40px 0;display:flex;justify-content:space-between;gap:20px;align-items:center;position:relative;overflow:hidden}
+  .ph::before{content:"";position:absolute;top:-70px;right:-70px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.07)}
+  .ph::after{content:"";position:absolute;top:20px;right:60px;width:140px;height:140px;border-radius:50%;border:22px solid rgba(255,255,255,.05)}
+  .ph-inner{display:flex;justify-content:space-between;gap:20px;align-items:center;width:100%;position:relative;z-index:1;padding-bottom:24px}
+  .ph-text{order:1;flex:1 1 auto}
+  .ph-photo-wrap{order:2;flex-shrink:0}
+  .ph-name{margin:0;font-size:28px;font-weight:800;letter-spacing:.5px;line-height:1.15}
+  .ph-title{display:inline-block;margin:6px 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2.5px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);padding:3px 12px;border-radius:20px}
+  .ph-contact{display:flex;flex-wrap:wrap;gap:6px 8px;font-size:11.4px}
+  .ph-contact span{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);padding:2px 10px;border-radius:20px;white-space:nowrap}
+  .ph-gold{height:5px;background:linear-gradient(90deg,var(--gold),rgba(255,255,255,.35),var(--gold));position:relative;z-index:1}
+  /* mouse-adjustable photo frame (works in PDF/print) */
+  .photo-frame{position:relative;flex-shrink:0;overflow:hidden;background:#fff;cursor:grab;box-shadow:0 4px 14px rgba(0,0,0,.3);touch-action:none}
+  .photo-frame:active{cursor:grabbing}
+  .photo-frame img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none}
+  .photo-frame .photo-hint{position:absolute;left:0;right:0;bottom:0;background:rgba(15,23,42,.85);color:#fff;font-size:9.5px;text-align:center;padding:3px 4px;opacity:0;transition:opacity .2s;line-height:1.4;pointer-events:none}
+  .photo-frame:hover .photo-hint,.photo-frame:focus-within .photo-hint{opacity:1}
+  .ph-photo{width:var(--pz,112px);height:var(--pz,112px);border:3px solid rgba(255,255,255,.92)}
+  .ph-photo.circle{border-radius:50%}
+  .ph-photo.square{border-radius:12px}
+  .ph-photo.placeholder{display:flex;align-items:center;justify-content:center;color:#64748b;border-style:dashed;font-size:11px;text-align:center;background:#f1f5f9;cursor:pointer}
+  /* classic header */
+  .ch{padding:0;display:block}
+  .ch-accent{height:10px;background:linear-gradient(90deg,var(--ra),var(--ra-dark))}
+  .ch-inner{padding:26px 44px 6px;display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+  .ch-text{order:1;flex:1 1 auto}
+  .ch-photo-wrap{order:2;flex-shrink:0}
+  .ch-name{margin:0;font-size:23px;font-weight:800;letter-spacing:.3px;color:#0f172a}
+  .ch-rule{width:56px;height:4px;background:var(--gold);border-radius:2px;margin:6px 0}
+  .ch-title{font-size:12px;font-weight:700;color:var(--ra);text-transform:uppercase;letter-spacing:1.8px;margin:2px 0 6px}
+  .ch-meta{font-size:12px;color:#333}
+  .ch-photo{width:100px;height:120px;border:1px solid #d7dee8}
+  .ch-photo.circle{border-radius:50%;height:100px;width:100px}
+  .ch-photo.placeholder{display:flex;align-items:center;justify-content:center;color:#64748b;border-style:dashed;font-size:11px;text-align:center;cursor:pointer}
+  .pbody{padding:8px 44px 36px}
+  .sec{orphans:3;widows:3}
+  .sec-t{page-break-after:avoid}
+  .sec-t{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:var(--ra);margin:22px 0 0}
+  .sec-t .bar{width:22px;height:5px;background:linear-gradient(90deg,var(--ra),var(--gold));border-radius:3px;display:inline-block;flex-shrink:0}
+  .sec-rule{border:0;border-top:2px solid #e8ecf1;margin:6px 0 10px;position:relative}
+  .sec-rule::after{content:"";position:absolute;left:0;top:-2px;width:64px;height:2px;background:var(--ra)}
+  .summary-box{background:#f4f6fa;border-left:4px solid var(--ra);padding:10px 14px;border-radius:0 8px 8px 0;text-align:justify;margin:0}
+  .r-p{margin:0 0 8px;text-align:justify}
+  .edu-head,.job-top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+  .edu-head b,.job-top b{font-size:13.2px}
+  .date-pill{font-size:10.8px;font-weight:700;color:var(--ra);background:#eef2f7;border:1px solid #c9d4e5;padding:2px 10px;border-radius:20px;white-space:nowrap}
+  .company{font-weight:700;margin:1px 0 3px}.company span{font-weight:400;color:#444}
+  .job{margin-bottom:13px;page-break-inside:avoid}
+  ul.blist{margin:4px 0 6px 18px;padding:0}
+  ul.blist li{margin:2.5px 0;text-align:justify}
+  ul.blist li::marker{color:var(--ra);font-weight:900}
+  .skills-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 18px;margin:6px 0;list-style:none;padding:0}
+  .skills-grid li{display:flex;gap:8px;align-items:flex-start;font-size:12.6px}
+  .tick{width:17px;height:17px;border-radius:50%;background:var(--ra);color:#fff;font-size:10.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+  .soft-pills{display:flex;flex-wrap:wrap;gap:7px;margin:6px 0}
+  .soft-pills span{background:#eef2f7;border:1px solid #dbe2ec;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600}
+  .ref-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .ref-card{background:#f8fafc;border:1px solid #e5eaf1;border-left:4px solid var(--ra);border-radius:8px;padding:10px 12px;page-break-inside:avoid}
+  .ref-card b{font-size:12.8px}
+  .ref-card p{margin:1px 0;font-size:12px}
+  .sub-list{margin:3px 0 8px 18px;padding:0;list-style-type:circle}.sub-list li{margin:2px 0}
+  .foot{margin-top:26px;padding-top:10px;border-top:1px solid #e5e7eb;font-size:10.5px;color:#6b7280;display:flex;justify-content:space-between}
+
+  @media (max-width:1000px){.app{grid-template-columns:1fr}aside.editor{max-height:none}main.preview-wrap{max-height:none}}
+  @page{size:A4;margin:0}
+  @media print{
+    header.toolbar,aside.editor,.paper-toolbar,#toast,.crop-overlay,.photo-hint{display:none !important}
+    html,body{background:#fff !important}
+    body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .app{display:block;min-height:auto}
+    main.preview-wrap{padding:0;max-height:none;display:block;overflow:visible}
+    #resumePaper{box-shadow:none !important;width:210mm;max-width:none;margin:0}
+    #resumePaper *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+    .photo-frame{cursor:default;box-shadow:none}
+    /* gutters come from the layout (44px ≈ 11.6mm each side, banner bleeds page 1) */
+    /* never strand a section title at a page bottom — glue it to its content */
+    .sec-t,.sec-rule{page-break-after:avoid;break-after:avoid}
+    .job,.ref-card,ul.blist li{page-break-inside:avoid;break-inside:avoid}
+    p,li{orphans:3;widows:3}
+  }
+</style>
+</head>
+<body>
+<header class="toolbar">
+  <h1>Resume Builder</h1><span class="sub">professional &bull; autosaves &bull; click photo to change</span>
+  <span style="flex:1"></span>
+  <button class="btn" onclick="triggerPhoto()">📷 Photo</button>
+  <button class="btn ghost" onclick="exportJSON()">⬇ JSON</button>
+  <button class="btn ghost" onclick="document.getElementById('importFile').click()">⬆ Load</button>
+  <button class="btn ghost" onclick="resetAll()">Reset</button>
+  <button class="btn ghost" onclick="window.print()">🖨 Print</button>
+  <button class="btn success" onclick="exportPDF()">⬇ Export PDF</button>
+  <input type="file" id="importFile" accept="application/json" style="display:none">
+  <input type="file" id="photoFile" accept="image/*" style="display:none">
+</header>
+<div class="app">
+<aside class="editor">
+  <div class="card">
+    <h2>🎨 Design — PDF styling</h2>
+    <label>Accent colour (header, titles, badges)</label>
+    <div class="swatches" id="swatches"></div>
+    <div class="row2">
+      <div><label>Header style</label><select id="f_header"><option value="banner">Professional banner</option><option value="classic">Classic clean</option></select></div>
+      <div><label>Photo shape</label><select id="f_shape"><option value="circle">Circle</option><option value="square">Square / passport</option></select></div>
+    </div>
+    <div class="row2">
+      <div><label>Font</label><select id="f_font"><option value="font-segoe">Segoe / Arial (modern)</option><option value="font-calibri">Calibri</option><option value="font-georgia">Georgia (serif)</option><option value="font-garamond">Garamond (elegant)</option></select></div>
+      <div><label>Photo visible</label><select id="f_showphoto"><option value="1">Show photo</option><option value="0">Hide photo</option></select></div>
+    </div>
+    <div class="row2">
+      <div><label>Density</label><select id="f_density"><option value="comfortable">Comfortable</option><option value="compact">Compact (fit more)</option></select></div>
+      <div><label>Photo size <output id="o_psize"></output></label><input type="range" id="f_psize" min="88" max="140" step="2" style="margin-top:10px"></div>
+    </div>
+    <div class="photo-ctrls">
+      <button class="btn small primary" onclick="openCrop()">✥ Adjust photo (drag + zoom)</button>
+      <button class="btn small" onclick="resetCrop()">Reset photo position</button>
+    </div>
+    <div class="slider-row"><span>Zoom</span><input type="range" id="f_zoom" min="1" max="3" step="0.05"><output id="o_zoom"></output></div>
+    <div class="hint" style="margin-top:8px">Tip: navy + banner + circle photo gives the most professional recruiter look. Drag the photo in the preview to reposition, scroll over it to zoom, or double-click it for the full editor. ⬇ Export PDF downloads the .pdf file instantly with the same layout and margins as Print (no browser header/footer text). 🖨 Print sends it to paper (or pick Save as PDF there for a pixel-perfect copy).</div>
+  </div>
+  <div class="card">
+    <h2>💾 Saved resumes</h2>
+    <div class="hint">Keep separate named copies — handy for tailoring a resume per job application.</div>
+    <div class="row2" style="margin-top:8px"><input type="text" id="f_saveName" placeholder="e.g. Security Manager – Infineon"><button class="btn small primary" onclick="saveAsNamed()">Save as new</button></div>
+    <div class="row2" style="margin-top:8px"><select id="savedList" style="flex:1"></select></div>
+    <div class="row2" style="margin-top:8px"><button class="btn small success" onclick="loadNamed()">Load selected</button><button class="btn small" onclick="deleteNamed()">Delete selected</button></div>
+  </div>
+  <div class="card">
+    <h2>Header / Personal</h2>
+    <label>Full name</label><input type="text" id="f_name">
+    <label>Professional title (under name)</label><input type="text" id="f_title">
+    <label>Address</label><textarea id="f_addr"></textarea>
+    <div class="row2"><div><label>Phone</label><input type="tel" id="f_phone" placeholder="+60 12 345 6789"></div><div><label>LinkedIn</label><input type="text" id="f_linkedin" placeholder="linkedin.com/in/yourname"></div></div>
+    <label>Email</label><input type="email" id="f_email" placeholder="you@example.com">
+    <label>Photo</label>
+    <div class="photo-row"><img id="editorPhotoPrev" alt="Profile photo preview"><div><button class="btn small primary" onclick="triggerPhoto()">Upload photo</button> <button class="btn small" onclick="openCrop()">Adjust</button> <button class="btn small" onclick="removePhoto()">Remove</button><div class="hint">Passport-size JPG/PNG works best. Large photos are automatically resized before saving. After upload, drag the photo in the preview (or click Adjust) to frame your face.</div></div></div>
+  </div>
+  <div class="card"><h2>Professional Summary</h2><textarea id="f_objective" style="min-height:110px"></textarea></div>
+  <div class="card"><h2>Education <button class="mini" onclick="addEdu()">+ Add</button></h2><div id="eduList"></div></div>
+  <div class="card"><h2>Skills <button class="mini" onclick="addSkill()">+ Add</button></h2><div id="skillsList"></div></div>
+  <div class="card"><h2>Private Sector Experience <button class="mini" onclick="addJob('privateExp')">+ Add job</button></h2><div id="privList"></div></div>
+  <div class="card"><h2>Military Experience <button class="mini" onclick="addJob('militaryExp')">+ Add job</button></h2><div id="milList"></div></div>
+  <div class="card"><h2>Awards <button class="mini" onclick="addSimple('awards')">+ Add</button></h2><div id="awardsList"></div></div>
+  <div class="card"><h2>Military Courses <button class="mini" onclick="addSimple('militaryCourses')">+ Add</button></h2><div id="milCoursesList"></div></div>
+  <div class="card"><h2>Other Courses <button class="mini" onclick="addSimple('otherCourses')">+ Add</button></h2><div id="otherCoursesList"></div></div>
+  <div class="card"><h2>Surveillance Systems <button class="mini" onclick="addSurv()">+ Add group</button></h2><div id="survList"></div></div>
+  <div class="card"><h2>Computer Software <button class="mini" onclick="addSimple('software')">+ Add</button></h2><div id="softList"></div></div>
+  <div class="card"><h2>References <button class="mini" onclick="addRef()">+ Add</button></h2><div id="refList"></div></div>
+  <div class="card"><h2>Show / Hide sections</h2><div class="check-grid" id="visGrid"></div></div>
+</aside>
+<main class="preview-wrap">
+  <div class="paper-toolbar"><span>⬇ Export PDF downloads the file (same as Print, no watermark) • 🖨 Print sends it to paper.</span><span style="display:flex;gap:8px;align-items:center"><span id="toast"></span><span id="saveState">Saved ✓</span></span></div>
+  <div id="resumePaper" class="font-segoe"></div>
+</main>
+</div>
+<div class="crop-overlay" id="cropOverlay">
+  <div class="crop-modal" role="dialog" aria-modal="true" aria-label="Adjust photo">
+    <h3>✥ Adjust photo</h3>
+    <p>Drag the image with your mouse to reposition • scroll or use the slider to zoom • works for circle and square shapes.</p>
+    <div class="crop-stage">
+      <div class="crop-box circle" id="cropBox"><img id="cropImg" alt="Photo crop preview"></div>
+      <div class="crop-side">
+        <label>Zoom</label>
+        <input type="range" id="cropZoom" min="1" max="3" step="0.05">
+        <div class="photo-ctrls">
+          <button class="btn small primary" onclick="applyCrop()">✓ Apply</button>
+          <button class="btn small" onclick="resetCrop()">Reset</button>
+          <button class="btn small" onclick="closeCrop()">Cancel</button>
+        </div>
+        <div class="hint" style="margin-top:8px">Tip: zoom to ~1.2–1.6 and drag so your eyes sit slightly above centre — the standard professional headshot framing.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+const LS_KEY='resumeBuilderV2';
+const SAVES_KEY='resumeBuilderSaves';
+const ACCENTS=['#14365d','#0f766e','#7c2d12','#1e3a8a','#334155','#065f46','#7f1d1d','#4a044e'];
+const defaultState={
+  personal:{name:"Mohd Ismail Mat Asin",title:"Security Operations Leader",address:"E3-3-2, Apartment Tainia, Jln Kenyalang 11/3, Seksyen 11, Petaling Jaya, Selangor, MY 47810",phone:"+60125243419",linkedin:"linkedin.com/in/mohdismailmatasin",email:"mohdismailmatasin@gmail.com",photo:"",photoX:50,photoY:30,photoZoom:1},
+  theme:{accent:"#14365d",header:"banner",shape:"circle",font:"font-segoe",showPhoto:"1",photoSize:112,density:"comfortable"},
+  objective:"Security Operations Leader with 10+ years of military and private sector experience. Proven expertise in risk assessment, surveillance systems, and team management. Seeking to leverage disciplined leadership and advanced security knowledge to protect assets and ensure operational excellence in private security services.",
+  education:[{title:"Diploma, Aviation Management",date:"09/2017",desc:"Aviation Management College (currently known as UniCam), Dengkil, Selangor, GPA: 2.93"}],
+  skills:["Security Operations Management","Risk Assessment & Incident Response","Surveillance Systems (LENEL, Genetec)","Team Training & Supervision","Crisis Management & Emergency Response","Cross-border Remote Monitoring","Microsoft Office Suite (Word, Excel, PowerPoint, Outlook)"],
+  privateExp:[
+    {title:"Operation Manager",date:"11/2024 – Present",company:"United Security Services Sdn Bhd,",location:"Putra Heights, Subang Jaya, Selangor",bullets:["Developed and enforced security policies, reducing incident response time by 20%.","Recruited, trained, scheduled and supervised security personnel across multiple sites.","Coordinated with law enforcement and external agencies to ensure compliance with national regulations.","Implemented new surveillance protocols, improving detection accuracy."]},
+    {title:"Shift Leader",date:"06/2022 – 11/2024",company:"Kawalan Perwira Sdn. Bhd.",location:"Infineon Technology Penang Assignment – Bayan Lepas, Pulau Pinang",bullets:["Supervised control room operations for Infineon Penang and remote sites across Asia-Pacific (Tokyo, Manila, Melbourne, Taipei).","Investigated and resolved internal security cases, ensuring compliance with company policy.","Trained new officers and security assistants on advanced surveillance systems (LENEL, Genetec).","Oversaw shipment monitoring of high-value assets, preventing losses."]}
+  ],
+  militaryExp:[
+    {title:"Trainer",date:"10/2017 – 10/2019",company:"Royal Malaysian Air Force,",location:"INSPRA, RMAF Kuantan",bullets:["Designed training courses and developed teaching resources.","Conducted training and implemented Competency Based Training (CBT).","Performed supervision, mentoring, coaching and counselling.","Organised assessments and managed training facilities.","Performed administrative and General Service Training functions."]},
+    {title:"Air Surveillance Officer",date:"10/2015 – 10/2017",company:"Royal Malaysian Air Force,",location:"320 Squadron, RMAF Kuantan",bullets:["Operated radar systems to monitor national airspace, coordinating with JATCC (now CAAM) and foreign military units.","Responded to emergency flight incidents, ensuring safe resolution.","Analysed surveillance data to identify emerging threats.","Managed Ops Room and performed administrative functions."]}
+  ],
+  awards:["Outstanding Services Award, Ministry of Defence, Royal Malaysian Air Force, 01/01/2012 — TU IST 214/12"],
+  militaryCourses:["Air Surveillance Technician, INSPRA RMAF, 28/6/2006 – 17/10/2006","Air Defense Junior Supervisor, INSPRA RMAF, 22/7/2009 – 8/9/2009","MAB-i 1206 (PX2000) System Administrator, MKATB2 Tawau, 30/11/2009 – 4/12/2009","Coastal Surveillance Station with Techno Science (USA), MKATB2 Tawau, 3/5/2010 – 7/5/2010","Junior Supervisor Course, INSPRA RMAF, 5/1/2010 – 12/10/2010","Air Defense Senior Supervisor, INSPRA RMAF, 4/7/2012 – 11/9/2012","Senior Supervisor Course, INSPRA RMAF, 2/4/2013 – 22/5/2013","Asset Management Course, INSMAT RMAF, 5/2/2018 – 9/2/2018","Air Surveillance Management Course, INSPRA RMAF, 3/9/2018 – 9/11/2018","Team Resource Management, INSPRA RMAF Kuantan, 15/10/2018 – 18/10/2018","Basic Trainer Course, RMAF Academy Ipoh, 4/3/2019 – 29/3/2019"],
+  otherCourses:["IT and Communication (Smart Device), PERHEBAT, 15/7/2020 – 31/12/2020","Coaching Skills, Kuantan Community College, 9/2019","Operator Course for Integrated Security Surveillance System, RMAF Kuantan, 2/2009"],
+  surveillance:[{title:"Security Surveillance System",items:["LENEL","Genetec — Infineon Bayan Lepas","Integrated Security Surveillance System"]},{title:"RADAR Surveillance System",items:["MARDIS","1206 Coastal Surveillance"]}],
+  software:["Microsoft Word","Microsoft PowerPoint","Microsoft Excel","Microsoft Outlook"],
+  references:[
+    {name:"Krishna Moorthy a/l Palanivelu",company:"Infineon Technologies (Kulim) Sdn. Bhd.",title:"Senior Security Manager",address:"Kulim High Tech Park, Kedah",phone:"+60122540775"},
+    {name:"Kishen Shastri a/l Palpanavan",company:"United Security Services Sdn. Bhd.",title:"Branch Manager",address:"Putra Heights, Subang Jaya",phone:"+60167137979"}
+  ],
+  visible:{objective:true,education:true,skills:true,privateExp:true,militaryExp:true,awards:true,militaryCourses:true,otherCourses:true,surveillance:true,software:true,references:true}
+};
+function load(){try{const r=localStorage.getItem(LS_KEY);if(r)return JSON.parse(r);const old=localStorage.getItem('resumeBuilderV1');if(old){const o=JSON.parse(old);return Object.assign(structuredClone(defaultState),o,{theme:structuredClone(defaultState.theme)})}}catch(e){}return null}
+let S=load()||structuredClone(defaultState);
+S.theme=Object.assign(structuredClone(defaultState.theme),S.theme||{});
+S.personal=Object.assign({photoX:50,photoY:30,photoZoom:1},S.personal||{});
+function normCrop(){const p=S.personal;if(!isFinite(+p.photoX))p.photoX=50;if(!isFinite(+p.photoY))p.photoY=30;if(!isFinite(+p.photoZoom)||+p.photoZoom<1)p.photoZoom=1;p.photoX=Math.min(100,Math.max(0,+p.photoX));p.photoY=Math.min(100,Math.max(0,+p.photoY));p.photoZoom=Math.min(3,Math.max(1,+p.photoZoom));if(!S.theme.photoSize)S.theme.photoSize=112;if(!S.theme.density)S.theme.density="comfortable"}
+normCrop();
+function shade(hex,amt){try{let h=hex.replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');let n=parseInt(h,16);let r=(n>>16)&255,g=(n>>8)&255,b=n&255;const t=amt<0?0:255,p=Math.abs(amt)/100;r=Math.round((t-r)*p)+r;g=Math.round((t-g)*p)+g;b=Math.round((t-b)*p)+b;return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1)}catch(e){return '#0b1e38'}}
+let saveT=null;
+function save(){const el=document.getElementById('saveState');if(el)el.textContent='Saving…';clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem(LS_KEY,JSON.stringify(S));if(el)el.textContent='Saved ✓ '+new Date().toLocaleTimeString()}catch(e){if(el)el.textContent='⚠ Not saved — storage full';toast('Could not save — browser storage is full. Try a smaller photo or use Export JSON as a backup.')}},400)}
+function esc(s){return (s??'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='inline-block';clearTimeout(t._h);t._h=setTimeout(()=>t.style.display='none',3500)}
+function move(a,i,d){const j=i+d;if(j<0||j>=a.length)return;const t=a[i];a[i]=a[j];a[j]=t}
+
+/* ---------- PREVIEW ---------- */
+function cropStyle(){const p=S.personal;return `object-position:${p.photoX}% ${p.photoY}%;transform:scale(${p.photoZoom})`}
+function photoHtml(cls){
+  if(S.theme.showPhoto==="0")return "";
+  if(S.personal.photo)return `<div class="${cls} ${S.theme.shape} photo-frame" data-photo="1" title="Drag to reposition • scroll to zoom • double-click to edit" role="button" tabindex="0" aria-label="Profile photo — drag to reposition, double-click to edit"><img src="${S.personal.photo}" alt="${esc(S.personal.name||'Profile')} photo" style="${cropStyle()}" draggable="false"><span class="photo-hint">✥ drag • scroll = zoom • 2×click = edit</span></div>`;
+  return `<div class="${cls} ${S.theme.shape} placeholder" onclick="triggerPhoto()" title="Click to add photo" role="button" tabindex="0" aria-label="Add photo" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();triggerPhoto()}"><span>📷<br>Add<br>photo</span></div>`;
+}
+function secT(t){return `<div class="sec-t"><span class="bar"></span><span>${t}</span></div><hr class="sec-rule">`}
+function jobHtml(j){
+  return `<div class="job"><div class="job-top"><b>${esc(j.title)}</b><span class="date-pill">${esc(j.date)}</span></div><div class="company">${esc(j.company)} <span>${esc(j.location)}</span></div><ul class="blist">${(j.bullets||[]).map(b=>`<li>${esc(b)}</li>`).join('')}</ul></div>`;
+}
+function renderPreview(){
+  const p=S.personal,v=S.visible,paper=document.getElementById('resumePaper');
+  normCrop();
+  paper.className=S.theme.font+' density-'+(S.theme.density||'comfortable');paper.style.setProperty('--ra',S.theme.accent);paper.style.setProperty('--ra-dark',shade(S.theme.accent,-38));paper.style.setProperty('--pz',(S.theme.photoSize||112)+'px');
+  let h="";
+  if(S.theme.header==="banner"){
+    h+=`<div class="ph"><div class="ph-inner"><div class="ph-photo-wrap">${photoHtml('ph-photo')}</div><div class="ph-text" style="min-width:0"><p class="ph-name">${esc(p.name)}</p><div><span class="ph-title">${esc(p.title)}</span></div><div class="ph-contact"><span>📍 ${esc(p.address)}</span><span>📞 ${esc(p.phone)}</span><span>🔗 ${esc(p.linkedin)}</span><span>✉ ${esc(p.email)}</span></div></div></div></div><div class="ph-gold"></div><div class="pbody">`;
+  }else{
+    h+=`<div class="ch"><div class="ch-accent"></div><div class="ch-inner"><div class="ch-photo-wrap">${photoHtml('ch-photo')}</div><div class="ch-text"><p class="ch-name">${esc(p.name)}</p><div class="ch-rule"></div><div class="ch-title">${esc(p.title)}</div><div class="ch-meta">${esc(p.address)}<br>📞 ${esc(p.phone)} &nbsp; 🔗 ${esc(p.linkedin)}<br>✉ ${esc(p.email)}</div></div></div></div><div class="pbody">`;
+  }
+  if(v.objective)h+=`<div class="sec">${secT('Professional Summary')}<p class="summary-box">${esc(S.objective)}</p></div>`;
+  if(v.education)h+=`<div class="sec">${secT('Education')}`+S.education.map(e=>`<div class="edu-head"><b>${esc(e.title)}</b><span class="date-pill">${esc(e.date)}</span></div><p class="r-p">${esc(e.desc)}</p>`).join('')+`</div>`;
+  if(v.skills)h+=`<div class="sec">${secT('Core Skills')}<ul class="skills-grid">`+S.skills.map(s=>`<li><span class="tick">✓</span><span>${esc(s)}</span></li>`).join('')+`</ul></div>`;
+  if(v.privateExp)h+=`<div class="sec">${secT('Private Sector Experience')}`+S.privateExp.map(jobHtml).join('')+`</div>`;
+  if(v.militaryExp)h+=`<div class="sec">${secT('Military Experience')}`+S.militaryExp.map(jobHtml).join('')+`</div>`;
+  if(v.awards)h+=`<div class="sec">${secT('Awards of Excellence')}<ul class="blist">`+S.awards.map(a=>`<li>${esc(a)}</li>`).join('')+`</ul></div>`;
+  if(v.militaryCourses)h+=`<div class="sec">${secT('Military Courses')}<ul class="blist">`+S.militaryCourses.map(a=>`<li>${esc(a)}</li>`).join('')+`</ul></div>`;
+  if(v.otherCourses)h+=`<div class="sec">${secT('Other Courses')}<ul class="blist">`+S.otherCourses.map(a=>`<li>${esc(a)}</li>`).join('')+`</ul></div>`;
+  if(v.surveillance)h+=`<div class="sec">${secT('Surveillance System Experience')}<ul class="blist">`+S.surveillance.map(g=>`<li><b>${esc(g.title)}</b><ul class="sub-list">`+g.items.map(i=>`<li>${esc(i)}</li>`).join('')+`</ul></li>`).join('')+`</ul></div>`;
+  if(v.software)h+=`<div class="sec">${secT('Computer Software')}<div class="soft-pills">`+S.software.map(a=>`<span>${esc(a)}</span>`).join('')+`</div></div>`;
+  if(v.references)h+=`<div class="sec">${secT('References')}<div class="ref-grid">`+S.references.map(r=>`<div class="ref-card"><b>${esc(r.name)}</b><p>${esc(r.company)}</p><p>${esc(r.title)}</p><p>${esc(r.address)}</p><p>📞 ${esc(r.phone)}</p></div>`).join('')+`</div></div>`;
+  h+=`<div class="foot"><span>${esc(p.name)} — Resume</span><span>${esc(p.phone)} • ${esc(p.email)}</span></div></div>`;
+  paper.innerHTML=h;
+  const ep=document.getElementById('editorPhotoPrev');if(ep){ep.src=S.personal.photo||'';ep.style.objectPosition=`${S.personal.photoX}% ${S.personal.photoY}%`}
+  attachPhotoHandlers();
+  syncPhotoControls();
+}
+
+/* ----- Mouse-adjust photo directly in preview: drag = pan, wheel = zoom, dblclick = editor ----- */
+function attachPhotoHandlers(){
+  document.querySelectorAll('#resumePaper [data-photo]').forEach(frame=>{
+    const img=frame.querySelector('img');if(!img)return;
+    frame.onpointerdown=e=>{if(!S.personal.photo)return;e.preventDefault();frame.setPointerCapture&&frame.setPointerCapture(e.pointerId);const sx=e.clientX,sy=e.clientY,ox=+S.personal.photoX,oy=+S.personal.photoY;frame._wasDrag=false;
+      const mv=ev=>{const r=frame.getBoundingClientRect();if(!r.width||!r.height)return;let nx=ox-(ev.clientX-sx)/r.width*100;let ny=oy-(ev.clientY-sy)/r.height*100;S.personal.photoX=Math.min(100,Math.max(0,nx));S.personal.photoY=Math.min(100,Math.max(0,ny));img.style.objectPosition=`${S.personal.photoX}% ${S.personal.photoY}%`;frame._wasDrag=true};
+      const up=()=>{frame.removeEventListener('pointermove',mv);frame.removeEventListener('pointerup',up);frame.removeEventListener('pointercancel',up);if(frame._wasDrag){save();syncPhotoControls();const ep=document.getElementById('editorPhotoPrev');if(ep)ep.style.objectPosition=`${S.personal.photoX}% ${S.personal.photoY}%`}};
+      frame.addEventListener('pointermove',mv);frame.addEventListener('pointerup',up);frame.addEventListener('pointercancel',up)};
+    frame.addEventListener('wheel',e=>{if(!S.personal.photo)return;e.preventDefault();normCrop();S.personal.photoZoom=Math.min(3,Math.max(1,+S.personal.photoZoom+(e.deltaY<0?0.08:-0.08)));img.style.transform=`scale(${S.personal.photoZoom})`;save();syncPhotoControls()},{passive:false});
+    frame.ondblclick=e=>{e.preventDefault();openCrop()};
+    frame.onclick=()=>{if(frame._wasDrag){frame._wasDrag=false;return}openCrop()};
+    frame.onkeydown=e=>{const st=e.shiftKey?5:2;let u=false;if(e.key==='ArrowLeft'){S.personal.photoX=Math.max(0,+S.personal.photoX-st);u=true}if(e.key==='ArrowRight'){S.personal.photoX=Math.min(100,+S.personal.photoX+st);u=true}if(e.key==='ArrowUp'){S.personal.photoY=Math.max(0,+S.personal.photoY-st);u=true}if(e.key==='ArrowDown'){S.personal.photoY=Math.min(100,+S.personal.photoY+st);u=true}if(e.key==='Enter'){openCrop()}if(u){e.preventDefault();renderPreview();save()}};
+  });
+}
+function syncPhotoControls(){
+  const z=document.getElementById('f_zoom'),oz=document.getElementById('o_zoom'),ps=document.getElementById('f_psize'),op=document.getElementById('o_psize');
+  if(z){z.value=S.personal.photoZoom||1}if(oz){oz.textContent=(+S.personal.photoZoom||1).toFixed(2)+'×'}
+  if(ps){ps.value=S.theme.photoSize||112}if(op){op.textContent=(S.theme.photoSize||112)+'px'}
+}
+
+/* ----- Full crop editor modal ----- */
+let cropDraft=null;
+window.openCrop=function(){
+  if(!S.personal.photo){triggerPhoto();toast('Upload a photo first, then adjust it');return}
+  normCrop();cropDraft={x:+S.personal.photoX,y:+S.personal.photoY,zoom:+S.personal.photoZoom};
+  const ov=document.getElementById('cropOverlay'),box=document.getElementById('cropBox'),img=document.getElementById('cropImg'),zs=document.getElementById('cropZoom');
+  box.className='crop-box '+S.theme.shape;img.src=S.personal.photo;img.draggable=false;zs.value=cropDraft.zoom;paintCropDraft();
+  ov.classList.add('open');
+};
+function paintCropDraft(){const img=document.getElementById('cropImg'),zs=document.getElementById('cropZoom');if(!img||!cropDraft)return;img.style.objectPosition=cropDraft.x+'% '+cropDraft.y+'%';img.style.transform='scale('+cropDraft.zoom+')';if(zs&&document.activeElement!==zs)zs.value=cropDraft.zoom}
+window.applyCrop=function(){if(!cropDraft)return;S.personal.photoX=cropDraft.x;S.personal.photoY=cropDraft.y;S.personal.photoZoom=cropDraft.zoom;cropDraft=null;document.getElementById('cropOverlay').classList.remove('open');save();renderPreview();toast('Photo framing applied ✓')};
+window.closeCrop=function(){cropDraft=null;document.getElementById('cropOverlay').classList.remove('open')};
+window.resetCrop=function(){S.personal.photoX=50;S.personal.photoY=30;S.personal.photoZoom=1;cropDraft=null;const ov=document.getElementById('cropOverlay');if(ov)ov.classList.remove('open');save();renderPreview();toast('Photo position reset')};
+/* Modal events — script runs at end of body so elements already exist */
+(function initCrop(){
+  const box=document.getElementById('cropBox'),img=document.getElementById('cropImg'),zs=document.getElementById('cropZoom'),ov=document.getElementById('cropOverlay');
+  if(!box||!img||!zs||!ov)return;
+  let drag=null;
+  box.addEventListener('pointerdown',e=>{if(!cropDraft)return;e.preventDefault();try{box.setPointerCapture(e.pointerId)}catch(_){}drag={sx:e.clientX,sy:e.clientY,ox:cropDraft.x,oy:cropDraft.y}});
+  box.addEventListener('pointermove',e=>{if(!drag||!cropDraft)return;const r=box.getBoundingClientRect();if(!r.width||!r.height)return;cropDraft.x=Math.min(100,Math.max(0,drag.ox-(e.clientX-drag.sx)/r.width*100));cropDraft.y=Math.min(100,Math.max(0,drag.oy-(e.clientY-drag.sy)/r.height*100));paintCropDraft()});
+  const end=()=>{drag=null};
+  box.addEventListener('pointerup',end);box.addEventListener('pointercancel',end);
+  box.addEventListener('wheel',e=>{if(!cropDraft)return;e.preventDefault();cropDraft.zoom=Math.min(3,Math.max(1,cropDraft.zoom+(e.deltaY<0?0.08:-0.08)));paintCropDraft()},{passive:false});
+  zs.addEventListener('input',()=>{if(!cropDraft)return;cropDraft.zoom=+zs.value;paintCropDraft()});
+  ov.addEventListener('click',e=>{if(e.target===ov)closeCrop()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&cropDraft)closeCrop()});
+})();
+
+/* ---------- PDF EXPORT (instant .pdf download; 🖨 Print button = paper) ----------
+   The live layout uses CSS grid / flex-wrap / object-fit, which the PDF renderer
+   can't draw faithfully — so export renders an off-screen clone with those
+   swapped for renderer-safe equivalents (inline-block columns, floats/blocks,
+   canvas-baked photo), then downloads it. Screen preview is untouched. */
+const PDF_FONTS={'font-segoe':'"Segoe UI",Arial,sans-serif','font-calibri':'Calibri,Arial,sans-serif','font-georgia':'Georgia,"Times New Roman",serif','font-garamond':'Garamond,Georgia,serif'};
+const PDF_SAFE_CSS=[
+'.pdf-safe{background:#fff;color:#1a1a1a}',
+'.pdf-safe .photo-hint{display:none !important}',
+'.pdf-safe .ph-inner,.pdf-safe .ch-inner{display:block !important;overflow:hidden}',
+'.pdf-safe .ph-photo-wrap,.pdf-safe .ch-photo-wrap{float:right !important;margin:0 0 10px 20px !important}',
+'.pdf-safe .ph-text,.pdf-safe .ch-text{overflow:hidden}',
+'.pdf-safe .ph-contact{display:block !important}',
+'.pdf-safe .ph-contact span{display:inline-block !important;margin:0 6px 6px 0 !important}',
+'.pdf-safe .edu-head,.pdf-safe .job-top{display:block !important;overflow:hidden}',
+'.pdf-safe .edu-head b,.pdf-safe .job-top b{display:inline !important}',
+'.pdf-safe .date-pill{float:right !important;margin:0 0 4px 12px !important}',
+'.pdf-safe .sec-t{display:block !important}',
+'.pdf-safe .sec-t .bar{margin-right:9px !important}',
+'.pdf-safe .skills-grid{display:block !important}',
+'.pdf-safe .skills-grid li{display:inline-block !important;width:46% !important;vertical-align:top !important;margin:0 2% 6px 0 !important}',
+'.pdf-safe .tick{display:inline-block !important;text-align:center !important;line-height:17px !important;margin-right:8px !important;vertical-align:top !important}',
+'.pdf-safe .soft-pills{display:block !important}',
+'.pdf-safe .soft-pills span{display:inline-block !important;margin:0 7px 7px 0 !important}',
+'.pdf-safe .ref-grid{display:block !important;overflow:hidden !important}',
+'.pdf-safe .ref-card{display:block !important;float:left !important;width:46% !important;margin:0 2% 10px 0 !important}',
+'.pdf-safe .ref-card p{display:block !important;color:#1a1a1a !important}',
+'.pdf-safe .foot{display:block !important;overflow:hidden}',
+'.pdf-safe .foot span:last-child{float:right !important}'
+].join('\n');
+/* Bake the visible photo crop (position + zoom) into a plain image so the
+   renderer needs no object-fit / transform support. */
+function bakePhoto(W,H){
+  return new Promise((res)=>{
+    const src=new Image();
+    src.onload=()=>{
+      try{
+        const p=S.personal,z=+p.photoZoom||1;
+        const scale=Math.max(W/src.naturalWidth,H/src.naturalHeight)*z;
+        const dw=src.naturalWidth*scale,dh=src.naturalHeight*scale;
+        const ox=Math.max(0,(dw-W)*((+p.photoX||50)/100)),oy=Math.max(0,(dh-H)*((+p.photoY||30)/100));
+        const k=2,c=document.createElement('canvas');
+        c.width=Math.max(2,Math.round(W*k));c.height=Math.max(2,Math.round(H*k));
+        c.getContext('2d').drawImage(src,-ox*k,-oy*k,dw*k,dh*k);
+        res(c.toDataURL('image/jpeg',0.92));
+      }catch(e){res(null)}
+    };
+    src.onerror=()=>res(null);
+    src.src=S.personal.photo;
+  });
+}
+/* Manual pagination for the PDF renderer: it mishandles keep-together rules
+   (stranded titles, split jobs, displaced cards), so measure the laid-out clone
+   and insert explicit page breaks. A4 height at 96 CSS dpi = 297/25.4*96.
+   Single pass in document order; shift tracks inserted breaks. */
+function paginateClone(clone){
+  const PAGE_H=297/25.4*96, TOP_PAD=48, BOT_PAD=50;
+  const pageOf=y=>Math.floor(y/PAGE_H), inPage=y=>y-pageOf(y)*PAGE_H;
+  const addBreak=el=>{
+    const d=document.createElement('div');
+    d.className='html2pdf__page-break';
+    d.style.cssText='page-break-before:always;break-before:page;';
+    el.parentNode.insertBefore(d,el);
+    const s=document.createElement('div');
+    s.style.cssText='height:'+TOP_PAD+'px;overflow:hidden;';
+    el.parentNode.insertBefore(s,el);
+  };
+  /* Snapshot all positions BEFORE inserting anything (insertions reflow the page). */
+  const units=[...clone.querySelectorAll('.sec-t,.job,.ref-card,.edu-head,.foot,.r-p,.summary-box,ul.blist > li,ul.sub-list > li')]
+    .map(el=>({el,top:el.offsetTop,h:el.offsetHeight}));
+  const topOf=new Map(units.map(u=>[u.el,u.top]));
+  let shift=0;
+  units.forEach(u=>{
+    const el=u.el, top=u.top, h=u.h;
+    const isTitle=el.classList.contains('sec-t');
+    if(!isTitle&&(el.closest('.job')||el.closest('.ref-card'))&&!el.classList.contains('job')&&!el.classList.contains('ref-card'))return;
+    const pdfTop=top+shift, ip=inPage(pdfTop);
+    if(ip<=1)return;
+    const sec=el.closest('.sec');
+    const t=sec&&sec.querySelector('.sec-t');
+    const tTop=t?topOf.get(t):-1;
+    if(isTitle){
+      if(PAGE_H-ip<200&&sec&&tTop>=0&&inPage(tTop+shift)>40){addBreak(sec);shift+=TOP_PAD+(PAGE_H-ip)}
+      return;
+    }
+    if(h>=1000||h<=0)return;
+    const remaining=PAGE_H-ip;
+    const isBlock=el.classList.contains('job')||el.classList.contains('ref-card')||el.classList.contains('summary-box');
+    let move=false;
+    if(remaining<BOT_PAD)move=true;
+    else if(isBlock&&h>remaining)move=true;
+    else if(!isBlock&&remaining<130&&h>remaining)move=true;
+    let pushed=false;
+    if(move){
+      pushed=true;
+      const first=sec&&sec.querySelector('.job,.ref-card,.edu-head,.summary-box,.r-p,ul.blist > li');
+      const glued=t&&tTop>=0&&pageOf(tTop+shift)===pageOf(pdfTop)&&(first===el||(el.classList.contains('r-p')&&first&&first.classList.contains('edu-head')));
+      if(glued&&sec&&inPage(tTop+shift)>40){addBreak(sec);shift+=TOP_PAD+(PAGE_H-inPage(tTop+shift))}
+      else{addBreak(el);shift+=TOP_PAD+remaining}
+    }
+    if(!pushed){
+      const G=pageOf(pdfTop)*PAGE_H;
+      if(pdfTop-G<40){
+        if(isTitle){if(sec&&tTop>=0&&inPage(tTop+shift)>40){addBreak(sec);shift+=TOP_PAD+(PAGE_H-(pdfTop-G))}}
+        else{
+          const t2=sec&&sec.querySelector('.sec-t');
+          const first2=sec&&sec.querySelector('.job,.ref-card,.edu-head,.summary-box,.r-p,ul.blist > li');
+          const tT=t2?topOf.get(t2):-1;
+          const glued2=t2&&tT>=0&&pageOf(tT+shift)===pageOf(pdfTop);
+          if(glued2&&sec&&((first2===el)||(el.classList.contains('r-p')&&first2&&first2.classList.contains('edu-head')))&&inPage(tT+shift)>40){addBreak(sec);shift+=TOP_PAD+(PAGE_H-(pdfTop-G))}
+          else{addBreak(el);shift+=TOP_PAD+(PAGE_H-(pdfTop-G))}
+        }
+      }
+    }
+  });
+}
+window.exportPDF=function(){
+  if(typeof html2pdf==='undefined'){toast('PDF engine still loading (needs internet once) — try again, or use 🖨 Print');return}
+  toast('Generating PDF…');
+  (async()=>{
+    let holder=null;
+    try{
+      normCrop();
+      const srcEl=document.getElementById('resumePaper');
+      holder=document.createElement('div');
+      holder.style.cssText='position:fixed;left:-12000px;top:0;width:794px;background:#ffffff;';
+      const stEl=document.createElement('style');stEl.textContent=PDF_SAFE_CSS;holder.appendChild(stEl);
+      const clone=srcEl.cloneNode(true);
+      clone.removeAttribute('id');
+      clone.className='pdf-safe '+(S.theme.font||'font-segoe');
+      clone.style.cssText='width:794px;max-width:none;margin:0;box-shadow:none;background:#fff;color:#1a1a1a;'
+        +'font-family:'+(PDF_FONTS[S.theme.font]||PDF_FONTS['font-segoe'])+';'
+        +'font-size:'+(S.theme.density==='compact'?'12px':'12.8px')+';'
+        +'line-height:'+(S.theme.density==='compact'?'1.5':'1.6')+';';
+      clone.style.setProperty('--ra',S.theme.accent);
+      clone.style.setProperty('--ra-dark',shade(S.theme.accent,-38));
+      clone.style.setProperty('--gold','#c9a227');
+      clone.style.setProperty('--pz',(S.theme.photoSize||112)+'px');
+      holder.appendChild(clone);
+      document.body.appendChild(holder);
+      if(S.personal.photo&&S.theme.showPhoto!=='0'){
+        const frame=clone.querySelector('[data-photo]');
+        if(frame){
+          const W=frame.clientWidth||112,H=frame.clientHeight||112;
+          const url=await bakePhoto(W,H);
+          if(url){
+            const img=frame.querySelector('img');
+            if(img){img.style.cssText='width:100%;height:100%;display:block;border:0;';img.src=url;
+              await new Promise(r=>{if(img.complete&&img.naturalWidth){r()}else{img.onload=r;img.onerror=r;setTimeout(r,3000)}});
+            }
+          }
+        }
+      }
+      /* Rebuild reference cards as inline spans: block-level text inside floated
+         cards is not painted by the PDF renderer, inline text is. Same words. */
+      clone.querySelectorAll('.ref-card').forEach(card=>{
+        const frag=document.createDocumentFragment();
+        const pushSpan=(text,bold,fs)=>{if(frag.childNodes.length)frag.appendChild(document.createElement('br'));const s=document.createElement('span');s.textContent=text;if(bold)s.style.fontWeight='800';if(fs)s.style.fontSize=fs;frag.appendChild(s)};
+        Array.from(card.childNodes).forEach(n=>{
+          if(n.nodeType===3){const t=n.textContent.trim();if(t)pushSpan(t,false)}
+          else if(n.nodeName==='B')pushSpan(n.textContent,true,'12.8px');
+          else if(n.nodeName==='P'){const t=n.textContent;if(t.trim()!=='')pushSpan(t,!!n.querySelector('b'))}
+        });
+        card.innerHTML='';card.appendChild(frag);
+      });
+      try{await document.fonts.ready}catch(e){}
+      paginateClone(clone);
+      const naEl=document.createElement('style');
+      naEl.textContent='.pdf-safe .job,.pdf-safe .ref-card,.pdf-safe .sec-t,.pdf-safe .sec-rule,.pdf-safe ul.blist li,.pdf-safe .edu-head{page-break-inside:auto !important;break-inside:auto !important;page-break-after:auto !important;break-after:auto !important}';
+      holder.appendChild(naEl);
+      const fname=(((S.personal.name||'resume').trim().replace(/[^\w\-]+/g,'_'))||'resume')+'_Resume.pdf';
+      await html2pdf().set({margin:0,filename:fname,image:{type:'jpeg',quality:0.98},html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy']}}).from(clone).save();
+      toast('PDF downloaded ✓');
+    }catch(e){toast('Export failed — use 🖨 Print → Save as PDF instead')}
+    if(holder&&holder.parentNode)holder.parentNode.removeChild(holder);
+  })();
+};
+
+/* ---------- EDITOR ---------- */
+function bindAll(){
+  const pm=[['f_name','name'],['f_title','title'],['f_addr','address'],['f_phone','phone'],['f_linkedin','linkedin'],['f_email','email']];
+  pm.forEach(([id,k])=>{const el=document.getElementById(id);el.value=S.personal[k]||"";el.oninput=()=>{S.personal[k]=el.value;save();renderPreview()}});
+  const o=document.getElementById('f_objective');o.value=S.objective;o.oninput=()=>{S.objective=o.value;save();renderPreview()};
+  const th=S.theme;
+  document.getElementById('f_header').value=th.header;document.getElementById('f_header').onchange=e=>{th.header=e.target.value;save();renderPreview()};
+  document.getElementById('f_shape').value=th.shape;document.getElementById('f_shape').onchange=e=>{th.shape=e.target.value;save();renderPreview()};
+  document.getElementById('f_font').value=th.font;document.getElementById('f_font').onchange=e=>{th.font=e.target.value;save();renderPreview()};
+  document.getElementById('f_showphoto').value=th.showPhoto;document.getElementById('f_showphoto').onchange=e=>{th.showPhoto=e.target.value;save();renderPreview()};
+  document.getElementById('f_density').value=th.density||'comfortable';document.getElementById('f_density').onchange=e=>{th.density=e.target.value;save();renderPreview()};
+  const ps=document.getElementById('f_psize');ps.value=th.photoSize||112;ps.oninput=e=>{th.photoSize=+e.target.value;save();renderPreview();syncPhotoControls()};
+  const fz=document.getElementById('f_zoom');fz.value=S.personal.photoZoom||1;fz.oninput=e=>{S.personal.photoZoom=+e.target.value;save();renderPreview()};
+  document.getElementById('swatches').innerHTML=ACCENTS.map(c=>`<div class="sw ${c===th.accent?'active':''}" style="background:${c}" title="${c}" role="button" tabindex="0" aria-pressed="${c===th.accent}" aria-label="Accent colour ${c}" onclick="setAccent('${c}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();setAccent('${c}')}"></div>`).join('');
+}
+window.setAccent=c=>{S.theme.accent=c;save();bindAll();renderPreview()};
+function renderEdu(){document.getElementById('eduList').innerHTML=S.education.map((e,i)=>`<div class="item"><div class="item-head"><strong>#${i+1}</strong><div><button class="mini" onclick="moveEdu(${i},-1)">↑</button> <button class="mini" onclick="moveEdu(${i},1)">↓</button> <button class="mini" onclick="delEdu(${i})">✕</button></div></div><label>Title</label><input type="text" value="${esc(e.title)}" oninput="S.education[${i}].title=this.value;save();renderPreview()"><label>Date</label><input type="text" value="${esc(e.date)}" oninput="S.education[${i}].date=this.value;save();renderPreview()"><label>Description</label><input type="text" value="${esc(e.desc)}" oninput="S.education[${i}].desc=this.value;save();renderPreview()"></div>`).join('')}
+function simpleList(arr,elId,path){document.getElementById(elId).innerHTML=arr.map((v,i)=>`<div class="bullet-row"><input type="text" value="${esc(v)}" oninput="${path}[${i}]=this.value;save();renderPreview()"><button class="mini" onclick="${path}Move(${i},-1)">↑</button><button class="mini" onclick="${path}Move(${i},1)">↓</button><button class="mini" onclick="${path}Del(${i})">✕</button></div>`).join('')}
+function renderJobs(key,elId){document.getElementById(elId).innerHTML=S[key].map((j,i)=>`<div class="item"><div class="item-head"><strong>${esc(j.title)||'Job '+(i+1)}</strong><div><button class="mini" onclick="moveJob('${key}',${i},-1)">↑</button> <button class="mini" onclick="moveJob('${key}',${i},1)">↓</button> <button class="mini" onclick="delJob('${key}',${i})">✕</button></div></div><div class="row2"><div><label>Title</label><input type="text" value="${esc(j.title)}" oninput="S['${key}'][${i}].title=this.value;save();renderPreview()"></div><div><label>Date</label><input type="text" value="${esc(j.date)}" oninput="S['${key}'][${i}].date=this.value;save();renderPreview()"></div></div><label>Company</label><input type="text" value="${esc(j.company)}" oninput="S['${key}'][${i}].company=this.value;save();renderPreview()"><label>Location</label><input type="text" value="${esc(j.location)}" oninput="S['${key}'][${i}].location=this.value;save();renderPreview()"><label>Bullets <button class="mini" onclick="addBullet('${key}',${i})">+ bullet</button></label>${(j.bullets||[]).map((b,bi)=>`<div class="bullet-row"><input type="text" value="${esc(b)}" oninput="S['${key}'][${i}].bullets[${bi}]=this.value;save();renderPreview()"><button class="mini" onclick="delBullet('${key}',${i},${bi})">✕</button></div>`).join('')}</div>`).join('')}
+function renderSurv(){document.getElementById('survList').innerHTML=S.surveillance.map((g,i)=>`<div class="item"><div class="item-head"><strong>${esc(g.title)}</strong><button class="mini" onclick="delSurv(${i})">✕</button></div><label>Group</label><input type="text" value="${esc(g.title)}" oninput="S.surveillance[${i}].title=this.value;save();renderPreview()"><label>Items <button class="mini" onclick="addSurvItem(${i})">+ item</button></label>${g.items.map((it,ii)=>`<div class="bullet-row"><input type="text" value="${esc(it)}" oninput="S.surveillance[${i}].items[${ii}]=this.value;save();renderPreview()"><button class="mini" onclick="delSurvItem(${i},${ii})">✕</button></div>`).join('')}</div>`).join('')}
+function renderRefs(){document.getElementById('refList').innerHTML=S.references.map((r,i)=>`<div class="item"><div class="item-head"><strong>#${i+1}</strong><button class="mini" onclick="delRef(${i})">✕</button></div>${['name','company','title','address','phone'].map(k=>`<label>${k}</label><input type="text" value="${esc(r[k])}" oninput="S.references[${i}]['${k}']=this.value;save();renderPreview()">`).join('')}</div>`).join('')}
+function renderAll(){renderEdu();simpleList(S.skills,'skillsList','S.skills');renderJobs('privateExp','privList');renderJobs('militaryExp','milList');simpleList(S.awards,'awardsList','S.awards');simpleList(S.militaryCourses,'milCoursesList','S.militaryCourses');simpleList(S.otherCourses,'otherCoursesList','S.otherCourses');renderSurv();simpleList(S.software,'softList','S.software');renderRefs();
+  const labels={objective:'Summary',education:'Education',skills:'Skills',privateExp:'Private Exp',militaryExp:'Military Exp',awards:'Awards',militaryCourses:'Mil. Courses',otherCourses:'Other Courses',surveillance:'Surveillance',software:'Software',references:'References'};
+  document.getElementById('visGrid').innerHTML=Object.keys(labels).map(k=>`<label><input type="checkbox" ${S.visible[k]?'checked':''} onchange="S.visible['${k}']=this.checked;save();renderPreview()"> ${labels[k]}</label>`).join('')}
+window.addEdu=()=>{S.education.push({title:"New qualification",date:"",desc:""});save();renderAll();renderPreview()};
+window.delEdu=i=>{S.education.splice(i,1);save();renderAll();renderPreview()};
+window.moveEdu=(i,d)=>{move(S.education,i,d);save();renderAll();renderPreview()};
+window.addSkill=()=>{S.skills.push("New skill");save();renderAll();renderPreview()};
+window.addSimple=k=>{S[k].push("New entry");save();renderAll();renderPreview()};
+S.skillsMove=(i,d)=>{move(S.skills,i,d);save();renderAll();renderPreview()};S.skillsDel=i=>{S.skills.splice(i,1);save();renderAll();renderPreview()};
+S.awardsMove=(i,d)=>{move(S.awards,i,d);save();renderAll();renderPreview()};S.awardsDel=i=>{S.awards.splice(i,1);save();renderAll();renderPreview()};
+S.militaryCoursesMove=(i,d)=>{move(S.militaryCourses,i,d);save();renderAll();renderPreview()};S.militaryCoursesDel=i=>{S.militaryCourses.splice(i,1);save();renderAll();renderPreview()};
+S.otherCoursesMove=(i,d)=>{move(S.otherCourses,i,d);save();renderAll();renderPreview()};S.otherCoursesDel=i=>{S.otherCourses.splice(i,1);save();renderAll();renderPreview()};
+S.softwareMove=(i,d)=>{move(S.software,i,d);save();renderAll();renderPreview()};S.softwareDel=i=>{S.software.splice(i,1);save();renderAll();renderPreview()};
+window.addJob=k=>{S[k].push({title:"New Role",date:"",company:"",location:"",bullets:["New achievement"]});save();renderAll();renderPreview()};
+window.delJob=(k,i)=>{S[k].splice(i,1);save();renderAll();renderPreview()};
+window.moveJob=(k,i,d)=>{move(S[k],i,d);save();renderAll();renderPreview()};
+window.addBullet=(k,i)=>{S[k][i].bullets.push("New bullet");save();renderAll();renderPreview()};
+window.delBullet=(k,i,bi)=>{S[k][i].bullets.splice(bi,1);save();renderAll();renderPreview()};
+window.addSurv=()=>{S.surveillance.push({title:"New System",items:["Item"]});save();renderSurv();renderPreview()};
+window.delSurv=i=>{S.surveillance.splice(i,1);save();renderSurv();renderPreview()};
+window.addSurvItem=i=>{S.surveillance[i].items.push("New item");save();renderSurv();renderPreview()};
+window.delSurvItem=(i,ii)=>{S.surveillance[i].items.splice(ii,1);save();renderSurv();renderPreview()};
+window.addRef=()=>{S.references.push({name:"Name",company:"",title:"",address:"",phone:""});save();renderRefs();renderPreview()};
+window.delRef=i=>{S.references.splice(i,1);save();renderRefs();renderPreview()};
+window.triggerPhoto=()=>document.getElementById('photoFile').click();
+window.removePhoto=()=>{S.personal.photo="";S.personal.photoX=50;S.personal.photoY=30;S.personal.photoZoom=1;save();renderPreview()};
+function resizePhoto(dataUrl,maxDim){return new Promise((resolve)=>{const img=new Image();img.onload=()=>{let w=img.width,h=img.height;if(w>h&&w>maxDim){h=Math.round(h*maxDim/w);w=maxDim}else if(h>maxDim){w=Math.round(w*maxDim/h);h=maxDim}const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);try{resolve(c.toDataURL('image/jpeg',0.85))}catch(e){resolve(dataUrl)}};img.onerror=()=>resolve(dataUrl);img.src=dataUrl});}
+document.getElementById('photoFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=async()=>{toast('Processing photo…');const resized=await resizePhoto(r.result,800);S.personal.photo=resized;S.personal.photoX=50;S.personal.photoY=30;S.personal.photoZoom=1;save();renderPreview();openCrop()};r.onerror=()=>toast('Could not read that image file');r.readAsDataURL(f);e.target.value=''});
+window.exportJSON=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,2)],{type:'application/json'}));a.download='resume.json';a.click()};
+document.getElementById('importFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{S=JSON.parse(r.result);S.theme=Object.assign(structuredClone(defaultState.theme),S.theme||{});S.personal=Object.assign({photoX:50,photoY:30,photoZoom:1},S.personal||{});normCrop();save();bindAll();renderAll();renderPreview()}catch(err){alert('Invalid JSON')}};r.readAsText(f);e.target.value=''});
+window.resetAll=()=>{if(confirm('Reset to original data?')){S=structuredClone(defaultState);localStorage.removeItem(LS_KEY);bindAll();renderAll();renderPreview()}};
+function getSaves(){try{return JSON.parse(localStorage.getItem(SAVES_KEY)||'[]')}catch(e){return[]}}
+function setSaves(list){try{localStorage.setItem(SAVES_KEY,JSON.stringify(list))}catch(e){toast('Could not store saved version — browser storage is full.')}}
+function renderSavedList(){const sel=document.getElementById('savedList');const saves=getSaves();sel.innerHTML=saves.length?saves.map(s=>`<option value="${s.id}">${esc(s.name)} — ${new Date(s.savedAt).toLocaleDateString()}</option>`).join(''):'<option value="">No saved versions yet</option>'}
+window.saveAsNamed=()=>{const nameEl=document.getElementById('f_saveName');const name=(nameEl.value||'').trim();if(!name){toast('Give this version a name first');return}const saves=getSaves();saves.push({id:Date.now().toString(36),name,savedAt:Date.now(),state:S});setSaves(saves);nameEl.value='';renderSavedList();toast('Saved as "'+name+'"')};
+window.loadNamed=()=>{const sel=document.getElementById('savedList');const id=sel.value;if(!id)return;const found=getSaves().find(s=>s.id===id);if(!found)return;if(!confirm('Load "'+found.name+'"? This replaces the current editor content (your current work is still in the main autosave).'))return;S=structuredClone(found.state);S.theme=Object.assign(structuredClone(defaultState.theme),S.theme||{});S.personal=Object.assign({photoX:50,photoY:30,photoZoom:1},S.personal||{});normCrop();save();bindAll();renderAll();renderPreview();toast('Loaded "'+found.name+'"')};
+window.deleteNamed=()=>{const sel=document.getElementById('savedList');const id=sel.value;if(!id)return;const saves=getSaves();const found=saves.find(s=>s.id===id);if(!found)return;if(!confirm('Delete saved version "'+found.name+'"? This cannot be undone.'))return;setSaves(saves.filter(s=>s.id!==id));renderSavedList();toast('Deleted "'+found.name+'"')};
+renderSavedList();
+bindAll();renderAll();renderPreview();
+</script>
+</body>
+</html>
