@@ -1,0 +1,14 @@
+{
+  "name": "resume-studio",
+  "version": "1.0.0",
+  "description": "Professional resume builder with live preview, PDF export, styling customization, and saved versions.",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "node -e \"process.exit(0)\"",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

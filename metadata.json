@@ -1,0 +1,6 @@
+{
+  "name": "Resume Studio",
+  "description": "Professional resume builder with ATS-safe templates, ATS checker, live preview, 1.27cm margin PDF export, and dark mode.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
